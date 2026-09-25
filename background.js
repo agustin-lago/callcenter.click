@@ -10,7 +10,9 @@ let viewportHeight = 0;
 let glows = [];
 let particles = [];
 let animationFrame = null;
+let resizeFrame = null;
 let previousTime = 0;
+let canvasPixelRatio = 1;
 
 function randomBetween(minimum, maximum) {
   return minimum + Math.random() * (maximum - minimum);
@@ -51,14 +53,30 @@ function createScene() {
 }
 
 function resizeCanvas() {
-  const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+  canvasPixelRatio = Math.min(window.devicePixelRatio || 1, 2);
   viewportWidth = window.innerWidth;
   viewportHeight = window.innerHeight;
-  backgroundCanvas.width = Math.round(viewportWidth * pixelRatio);
-  backgroundCanvas.height = Math.round(viewportHeight * pixelRatio);
-  backgroundContext.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+  backgroundCanvas.width = Math.round(viewportWidth * canvasPixelRatio);
+  backgroundCanvas.height = Math.round(viewportHeight * canvasPixelRatio);
+  backgroundContext.setTransform(canvasPixelRatio, 0, 0, canvasPixelRatio, 0, 0);
   createScene();
   drawScene(0);
+}
+
+function handleViewportResize() {
+  if (resizeFrame) cancelAnimationFrame(resizeFrame);
+
+  resizeFrame = requestAnimationFrame(() => {
+    resizeFrame = null;
+    const nextWidth = window.innerWidth;
+    const nextPixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+    const isMobileHeightChange = mobileQuery.matches
+      && Math.abs(nextWidth - viewportWidth) < 1
+      && nextPixelRatio === canvasPixelRatio;
+
+    if (isMobileHeightChange) return;
+    resizeCanvas();
+  });
 }
 
 function updateScene(deltaSeconds) {
@@ -154,10 +172,10 @@ function handleVisibilityChange() {
   }
 }
 
-window.addEventListener('resize', resizeCanvas, { passive: true });
+window.addEventListener('resize', handleViewportResize, { passive: true });
 document.addEventListener('visibilitychange', handleVisibilityChange);
 reducedMotionQuery.addEventListener('change', handleMotionPreference);
-mobileQuery.addEventListener('change', resizeCanvas);
+mobileQuery.addEventListener('change', handleViewportResize);
 
 resizeCanvas();
 startAnimation();
